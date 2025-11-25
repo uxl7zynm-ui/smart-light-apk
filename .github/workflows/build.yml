@@ -1,7 +1,7 @@
 name: Build Android APK
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -10,13 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 安装 Python 和依赖
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      # 安装系统库
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -24,22 +22,23 @@ jobs:
             python3-pip build-essential git python3 python3-dev ffmpeg \
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libgstreamer1.0 \
+            zlib1g-dev libgstreamer1.0-dev \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            openjdk-17-jdk unzip
+            openjdk-17-jdk unzip libffi-dev
 
-      # 安装打包工具
       - name: Install Buildozer
         run: |
+          pip install --upgrade pip
           pip install buildozer==1.5.0
           pip install cython==0.29.36
 
-      # 开始打包
+      - name: Fix Buildozer Spec Permissions
+        run: chmod 777 buildozer.spec
+
       - name: Build with Buildozer
         run: |
           yes | buildozer android debug
 
-      # 上传结果
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
