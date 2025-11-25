@@ -6,19 +6,59 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # 强制使用稳定的 Ubuntu 22.04 版本
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build with Buildozer (Docker)
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer android debug
-          buildozer_version: master
-          workdir: .
+      # 1. 清理空间 (防止空间不足)
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
+      # 2. 安装 Java 17 (Android SDK 必须)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. 安装 Python 3.10
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 4. 安装系统依赖 (最全列表)
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential git ffmpeg libsdl2-dev libsdl2-image-dev \
+            libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev \
+            libavformat-dev libavcodec-dev zlib1g-dev libgstreamer1.0-dev \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good unzip \
+            autoconf libtool pkg-config libffi-dev
+
+      # 5. 安装 Buildozer
+      - name: Install Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install buildozer==1.5.0
+          pip install cython==0.29.36
+          pip install setuptools
+
+      # 6. 开始打包 (Debug模式)
+      - name: Build APK
+        run: |
+          # 强制同意所有 SDK 协议
+          yes | buildozer android debug
+
+      # 7. 上传结果
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
