@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. 清理空间
+      # 1. 清理空间 (必须做，否则安卓SDK解压会爆盘)
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -20,12 +20,12 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-      # 2. 安装 Java 17
+      # 2. 【关键修改】使用 Java 11 (兼容旧版 SDK Tools)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '11'
 
       # 3. 安装 Python 3.10
       - name: Setup Python
@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 4. 安装系统依赖 (修正版：去掉了报错的 libgstreamer1.0-dev)
+      # 4. 安装系统依赖
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -41,7 +41,7 @@ jobs:
             build-essential git ffmpeg unzip \
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libffi-dev autoconf libtool pkg-config
+            zlib1g-dev libffi-dev autoconf libtool pkg-config lld
 
       # 5. 安装 Buildozer
       - name: Install Buildozer
@@ -50,13 +50,13 @@ jobs:
           pip install buildozer==1.5.0
           pip install cython==0.29.36
 
-      # 6. 修复权限 (防止权限报错)
+      # 6. 修复权限
       - name: Fix Permissions
         run: |
           chmod 777 .
           chmod 777 buildozer.spec
 
-      # 7. 开始打包
+      # 7. 开始打包 (yes 命令会自动一路回车同意协议)
       - name: Build APK
         run: |
           yes | buildozer android debug
