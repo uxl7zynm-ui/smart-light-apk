@@ -6,13 +6,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04  # 强制使用稳定的 Ubuntu 22.04 版本
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. 清理空间 (防止空间不足)
+      # 1. 清理空间
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -20,7 +20,7 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-      # 2. 安装 Java 17 (Android SDK 必须)
+      # 2. 安装 Java 17
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -33,16 +33,15 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 4. 安装系统依赖 (最全列表)
+      # 4. 安装系统依赖 (修正版：去掉了报错的 libgstreamer1.0-dev)
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential git ffmpeg libsdl2-dev libsdl2-image-dev \
-            libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev \
-            libavformat-dev libavcodec-dev zlib1g-dev libgstreamer1.0-dev \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good unzip \
-            autoconf libtool pkg-config libffi-dev
+            build-essential git ffmpeg unzip \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
+            zlib1g-dev libffi-dev autoconf libtool pkg-config
 
       # 5. 安装 Buildozer
       - name: Install Buildozer
@@ -50,15 +49,19 @@ jobs:
           pip install --upgrade pip
           pip install buildozer==1.5.0
           pip install cython==0.29.36
-          pip install setuptools
 
-      # 6. 开始打包 (Debug模式)
+      # 6. 修复权限 (防止权限报错)
+      - name: Fix Permissions
+        run: |
+          chmod 777 .
+          chmod 777 buildozer.spec
+
+      # 7. 开始打包
       - name: Build APK
         run: |
-          # 强制同意所有 SDK 协议
           yes | buildozer android debug
 
-      # 7. 上传结果
+      # 8. 上传结果
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
