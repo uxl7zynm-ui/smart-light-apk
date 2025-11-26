@@ -6,7 +6,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,ttf
 version = 0.1
 # 增加 openssl 依赖
-requirements = python3,kivy==2.2.1,BAC0,ifaddr,netifaces,requests,certifi,urllib3,idna,chardet,openssl
+requirements = python3,kivy==2.2.1,BAC0,ifaddr,netifaces,requests,certifi,urllib3,idna,chardet
 
 orientation = portrait
 fullscreen = 0
