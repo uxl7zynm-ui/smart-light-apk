@@ -5,8 +5,8 @@ package.domain = com.smartlight
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,ttf
 version = 0.1
-# 只保留 requests，让它自动处理它自己的子依赖
-requirements = python3,kivy==2.2.1,requests
+# 先只跑通最纯净的 Kivy，验证环境是否成功
+requirements = python3,kivy==2.2.1
 
 orientation = portrait
 fullscreen = 0
