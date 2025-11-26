@@ -67,11 +67,9 @@ jobs:
           chmod 777 .
           chmod 777 buildozer.spec
 
-      # 【新增】清理之前的失败缓存，防止干扰
-      - name: Clean Buildozer Cache
-        run: |
-          rm -rf .buildozer
-          rm -rf bin
+      # 彻底清理旧的构建环境
+      - name: Clean Buildozer
+        run: buildozer android clean
 
       - name: Build APK
         run: |
@@ -79,7 +77,7 @@ jobs:
           export PATH=$PATH:$ANDROID_HOME/tools/bin
           export PATH=$PATH:$ANDROID_HOME/platform-tools
           
-          # 增加详细日志参数，万一报错能看清，但这次应该稳了
+          # 使用 verbose 模式，并且不带 requests
           buildozer android debug verbose
 
       - name: Upload APK
