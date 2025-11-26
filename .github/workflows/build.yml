@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 4. 安装依赖
+      # 4. 安装基础依赖
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -43,32 +43,58 @@ jobs:
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libffi-dev autoconf libtool pkg-config lld
 
-      # 5. 安装 Buildozer (Master分支)
+      # 5. 【核心修复】手动下载并配置 Android SDK
+      # 这样可以绕过 Buildozer 的下载逻辑错误，并完美解决 License 问题
+      - name: Setup Android SDK Manually
+        run: |
+          # 定义路径
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          
+          # 下载官方 SDK 工具 (Command Line Tools)
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk-tools.zip
+          unzip -q sdk-tools.zip
+          
+          # 整理目录结构 (Android 规范要求 cmdline-tools/latest/bin)
+          mv cmdline-tools latest
+          mv latest $ANDROID_HOME/cmdline-tools/
+          
+          # 设置环境变量以便后续使用
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+          export PATH=$PATH:$ANDROID_HOME/platform-tools
+          
+          # 自动接受所有协议！！
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          
+          # 安装必要的构建工具 (API 33 和 Build-Tools)
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
+
+      # 6. 安装 Buildozer (Master分支)
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install https://github.com/kivy/buildozer/archive/master.zip
           pip install cython==0.29.36
+          pip install sh
 
-      # 6. 【核心大招】手动预先接受所有安卓协议
-      - name: Accept Android Licenses manually
+      # 7. 修复权限
+      - name: Fix Permissions
         run: |
-          # 创建 SDK 目录
-          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-          # 写入协议哈希值 (这些是 Google 官方的许可指纹)
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
-          echo "601085b94cd77f0b54ff86406957099ebe79c4d6" > ~/.buildozer/android/platform/android-sdk/licenses/android-googletv-license
-          echo "33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > ~/.buildozer/android/platform/android-sdk/licenses/google-gdk-license
-          echo "e9acab5b5fbb560a72cfaecce8946896ff6aab9d" > ~/.buildozer/android/platform/android-sdk/licenses/mips-android-sysimage-license
+          chmod 777 .
+          chmod 777 buildozer.spec
 
-      # 7. 开始打包 (再次加上 yes 以防万一)
+      # 8. 开始打包
+      # 此时 Buildozer 会发现 SDK 已经存在且完整，会直接开始编译
       - name: Build APK
         run: |
+          # 再次确认环境变量
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+          export PATH=$PATH:$ANDROID_HOME/platform-tools
+          
           yes | buildozer android debug
 
-      # 8. 上传 APK
+      # 9. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
