@@ -8,11 +8,16 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    env:
+      # 自动接受安卓 SDK 协议，不再需要 yes 命令
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ACCEPT_EULA: Y
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. 清理空间
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -20,20 +25,18 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-      # 2. 【改回新版】Setup Java 17 (新版 SDK 必须)
+      # 使用 Java 17 (配合最新 Buildozer)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Setup Python 3.10
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 4. 安装依赖
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -43,26 +46,25 @@ jobs:
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libffi-dev autoconf libtool pkg-config lld
 
-      # 5. 【核心修改】安装 Buildozer 最新开发版 (修复 SDK 崩溃问题)
+      # 安装 Buildozer (Master分支)
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
-          # 不再使用 1.5.0，而是直接安装 master 分支
           pip install https://github.com/kivy/buildozer/archive/master.zip
           pip install cython==0.29.36
+          # 安装 sh 库，防止某些环境报错
+          pip install sh
 
-      # 6. 修复权限
       - name: Fix Permissions
         run: |
           chmod 777 .
           chmod 777 buildozer.spec
 
-      # 7. 开始打包
+      # 开始打包 (去掉了 yes | )
       - name: Build APK
         run: |
-          yes | buildozer android debug
+          buildozer android debug
 
-      # 8. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
