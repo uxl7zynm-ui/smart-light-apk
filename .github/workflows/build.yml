@@ -6,12 +6,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    # 换回 Ubuntu 20.04，老版本的兼容性比 22.04 好太多
+    # 很多 SSL 和 Python 编译问题换成 20.04 自动就消失了
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 1. 腾出空间
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -19,18 +22,20 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-      - name: Setup Java 17
+      # 2. Java 11 (Ubuntu 20.04 最稳定搭配)
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '11'
 
-      - name: Setup Python 3.10
+      # 3. Python 3.8 (Kivy 官方推荐的最稳定版本)
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.8'
 
-      # 【关键补充】增加了 libssl-dev 和 autopoint，防止编译 Python 失败
+      # 4. 安装依赖 (补全了 libssl-dev)
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -41,44 +46,51 @@ jobs:
             zlib1g-dev libffi-dev autoconf libtool pkg-config lld \
             libssl-dev autopoint gettext
 
+      # 5. 安装 Buildozer (Master分支)
+      - name: Install Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install https://github.com/kivy/buildozer/archive/master.zip
+          pip install cython==0.29.33
+          pip install sh
+
+      # 6. 手动 SDK + 欺骗战术 (这是必须的)
       - name: Setup Android SDK Manually
         run: |
           export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
           mkdir -p $ANDROID_HOME/cmdline-tools
           
+          # 下载 SDK
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk-tools.zip
           unzip -q sdk-tools.zip
           
+          # 整理目录
           mv cmdline-tools latest
           mv latest $ANDROID_HOME/cmdline-tools/
           
+          # 建立软链接欺骗 Buildozer
           ln -s $ANDROID_HOME/cmdline-tools/latest $ANDROID_HOME/tools
           
+          # 接受协议
           yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses
+          
+          # 安装工具
           $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
-
-      - name: Install Buildozer
-        run: |
-          pip install --upgrade pip
-          pip install https://github.com/kivy/buildozer/archive/master.zip
-          pip install cython==0.29.36
-          pip install sh
 
       - name: Fix Permissions
         run: |
           chmod 777 .
           chmod 777 buildozer.spec
 
-      # 【已删除】Clean Buildozer 步骤 (因为它导致了报错)
-
+      # 7. 打包 (去掉了 clean 命令！)
       - name: Build APK
         run: |
           export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
           export PATH=$PATH:$ANDROID_HOME/tools/bin
           export PATH=$PATH:$ANDROID_HOME/platform-tools
           
-          # 既然环境是新的，直接 debug 即可
-          buildozer android debug verbose
+          # 只跑 debug，不再 clean
+          yes | buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
