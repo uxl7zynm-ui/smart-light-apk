@@ -30,6 +30,7 @@ jobs:
         with:
           python-version: '3.10'
 
+      # 【关键补充】增加了 libssl-dev 和 autopoint，防止编译 Python 失败
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -37,7 +38,8 @@ jobs:
             build-essential git ffmpeg unzip \
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libffi-dev autoconf libtool pkg-config lld
+            zlib1g-dev libffi-dev autoconf libtool pkg-config lld \
+            libssl-dev autopoint gettext
 
       - name: Setup Android SDK Manually
         run: |
@@ -67,9 +69,7 @@ jobs:
           chmod 777 .
           chmod 777 buildozer.spec
 
-      # 彻底清理旧的构建环境
-      - name: Clean Buildozer
-        run: buildozer android clean
+      # 【已删除】Clean Buildozer 步骤 (因为它导致了报错)
 
       - name: Build APK
         run: |
@@ -77,7 +77,7 @@ jobs:
           export PATH=$PATH:$ANDROID_HOME/tools/bin
           export PATH=$PATH:$ANDROID_HOME/platform-tools
           
-          # 使用 verbose 模式，并且不带 requests
+          # 既然环境是新的，直接 debug 即可
           buildozer android debug verbose
 
       - name: Upload APK
