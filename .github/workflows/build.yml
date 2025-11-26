@@ -8,16 +8,11 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
-    env:
-      # 自动接受安卓 SDK 协议，不再需要 yes 命令
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ACCEPT_EULA: Y
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 1. 清理空间
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -25,18 +20,20 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-      # 使用 Java 17 (配合最新 Buildozer)
+      # 2. Setup Java 17
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # 3. Setup Python 3.10
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
+      # 4. 安装依赖
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -46,25 +43,32 @@ jobs:
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libffi-dev autoconf libtool pkg-config lld
 
-      # 安装 Buildozer (Master分支)
+      # 5. 安装 Buildozer (Master分支)
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install https://github.com/kivy/buildozer/archive/master.zip
           pip install cython==0.29.36
-          # 安装 sh 库，防止某些环境报错
-          pip install sh
 
-      - name: Fix Permissions
+      # 6. 【核心大招】手动预先接受所有安卓协议
+      - name: Accept Android Licenses manually
         run: |
-          chmod 777 .
-          chmod 777 buildozer.spec
+          # 创建 SDK 目录
+          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          # 写入协议哈希值 (这些是 Google 官方的许可指纹)
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+          echo "601085b94cd77f0b54ff86406957099ebe79c4d6" > ~/.buildozer/android/platform/android-sdk/licenses/android-googletv-license
+          echo "33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > ~/.buildozer/android/platform/android-sdk/licenses/google-gdk-license
+          echo "e9acab5b5fbb560a72cfaecce8946896ff6aab9d" > ~/.buildozer/android/platform/android-sdk/licenses/mips-android-sysimage-license
 
-      # 开始打包 (去掉了 yes | )
+      # 7. 开始打包 (再次加上 yes 以防万一)
       - name: Build APK
         run: |
-          buildozer android debug
+          yes | buildozer android debug
 
+      # 8. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
