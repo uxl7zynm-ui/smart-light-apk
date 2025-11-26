@@ -39,7 +39,6 @@ jobs:
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libffi-dev autoconf libtool pkg-config lld
 
-      # 手动安装 SDK 并建立软链接
       - name: Setup Android SDK Manually
         run: |
           export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
@@ -51,13 +50,9 @@ jobs:
           mv cmdline-tools latest
           mv latest $ANDROID_HOME/cmdline-tools/
           
-          # 建立欺骗链接
           ln -s $ANDROID_HOME/cmdline-tools/latest $ANDROID_HOME/tools
           
-          # 接受协议
           yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses
-          
-          # 安装构建工具
           $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
 
       - name: Install Buildozer
@@ -72,14 +67,20 @@ jobs:
           chmod 777 .
           chmod 777 buildozer.spec
 
+      # 【新增】清理之前的失败缓存，防止干扰
+      - name: Clean Buildozer Cache
+        run: |
+          rm -rf .buildozer
+          rm -rf bin
+
       - name: Build APK
         run: |
           export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
           export PATH=$PATH:$ANDROID_HOME/tools/bin
           export PATH=$PATH:$ANDROID_HOME/platform-tools
           
-          # 【关键修改】去掉 yes |，因为协议已签，避免 Broken Pipe
-          buildozer android debug
+          # 增加详细日志参数，万一报错能看清，但这次应该稳了
+          buildozer android debug verbose
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
