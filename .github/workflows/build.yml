@@ -39,29 +39,25 @@ jobs:
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libffi-dev autoconf libtool pkg-config lld
 
-      # 【核心修复】手动安装 SDK 并建立软链接欺骗 Buildozer
+      # 手动安装 SDK 并建立软链接
       - name: Setup Android SDK Manually
         run: |
-          # 1. 准备目录
           export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
           mkdir -p $ANDROID_HOME/cmdline-tools
           
-          # 2. 下载官方工具
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O sdk-tools.zip
           unzip -q sdk-tools.zip
           
-          # 3. 整理目录 (新标准)
           mv cmdline-tools latest
           mv latest $ANDROID_HOME/cmdline-tools/
           
-          # 4. 【关键步骤】建立“欺骗”链接！
-          # Buildozer 找 tools/bin/sdkmanager，我们就把 cmdline-tools 链接成 tools
+          # 建立欺骗链接
           ln -s $ANDROID_HOME/cmdline-tools/latest $ANDROID_HOME/tools
           
-          # 5. 接受协议
+          # 接受协议
           yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses
           
-          # 6. 安装构建工具
+          # 安装构建工具
           $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;34.0.0"
 
       - name: Install Buildozer
@@ -78,12 +74,12 @@ jobs:
 
       - name: Build APK
         run: |
-          # 再次确保环境变量指向正确
           export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
           export PATH=$PATH:$ANDROID_HOME/tools/bin
           export PATH=$PATH:$ANDROID_HOME/platform-tools
           
-          yes | buildozer android debug
+          # 【关键修改】去掉 yes |，因为协议已签，避免 Broken Pipe
+          buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
